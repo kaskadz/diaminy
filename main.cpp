@@ -52,6 +52,15 @@ public:
                 return {x - 1, y + 1};
         }
     }
+
+    bool operator==(const Position &rhs) const {
+        return x == rhs.x &&
+               y == rhs.y;
+    }
+
+    bool operator!=(const Position &rhs) const {
+        return !(rhs == *this);
+    }
 };
 
 struct MoveData {
@@ -222,7 +231,25 @@ Map *ReadMapFromStdin() {
 struct Edge {
     int weight;
     int direction;
+    Position from;
     Position to;
+
+    bool is_reverse(Edge e) const {
+        return e.reverse() == *this;
+    }
+
+    Edge reverse() const {
+        return Edge{0, 0, to, from};
+    }
+
+    bool operator==(const Edge &rhs) const {
+        return from == rhs.from &&
+               to == rhs.to;
+    }
+
+    bool operator!=(const Edge &rhs) const {
+        return !(rhs == *this);
+    }
 };
 
 class Graph {
@@ -243,14 +270,16 @@ public:
         std::queue<Position> positions;
         positions.push(map->shipInitialPosition);
         while (!positions.empty()) {
-            Position pos = positions.front();
+            Position currentPosition = positions.front();
             positions.pop();
-            if (neighbours[map->abs_position(pos)].empty()) {
+            if (neighbours[map->abs_position(currentPosition)].empty()) {
                 for (int d = 0; d < 8; ++d) {
-                    MoveData md = map->move(pos, d);
-                    if (md.finalPosition.x != pos.x || md.finalPosition.y != pos.y) {
+                    MoveData md = map->move(currentPosition, d);
+                    if (md.finalPosition != currentPosition) {
                         int weight = md.diamondsGathered->size();
-                        neighbours[map->abs_position(pos)].push_back(Edge{weight, d, md.finalPosition});
+                        neighbours[map->abs_position(currentPosition)]
+                                .push_back(Edge{weight, d, currentPosition, md.finalPosition});
+
                         if (neighbours[map->abs_position(md.finalPosition)].empty()) {
                             positions.push(md.finalPosition);
                         }
