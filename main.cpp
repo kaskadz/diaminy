@@ -135,12 +135,7 @@ public:
         printf("m: %d t: %d\n", maxMoves, targetScore);
         printf("s: (%d, %d)\n", shipInitialPosition.x, shipInitialPosition.y);
 
-        for (int i = height - 1; i >= 0; --i) {
-            for (int j = 0; j < width; ++j) {
-                std::cout << at(j, i);
-            }
-            std::cout << std::endl;
-        }
+        PrintToOutputStream(std::cout);
     }
 
     MoveData move(Position initial, Direction direction) {
@@ -195,6 +190,30 @@ public:
             }
         }
         return diamonds;
+    }
+
+    void PrintToOutputStream(std::ostream &stream) {
+        for (int i = height - 1; i >= 0; --i) {
+            for (int j = 0; j < width; ++j) {
+                stream << at(j, i);
+            }
+            stream << std::endl;
+        }
+    }
+
+    void save(const std::string &file_path) {
+        std::ofstream output_file;
+
+        output_file.open(file_path);
+        if (output_file.is_open()) {
+            output_file << height << ' ' << width << std::endl;
+            output_file << maxMoves << std::endl;
+            PrintToOutputStream(output_file);
+            output_file.close();
+        } else {
+            std::cerr << "Unable to open file" << std::endl;
+            std::cerr << strerror(errno) << std::endl;
+        }
     }
 
     static Map *CreateFromInputStream(std::istream &stream);
@@ -292,6 +311,8 @@ namespace std {
     };
 }
 
+void print_path_numbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
+
 class Graph {
 private:
     Map *map;
@@ -351,57 +372,72 @@ public:
         }
     }
 
-    void print_visited_map() {
+    void print_visited_map(std::ostream &stream = std::cout) {
         for (int i = map->height - 1; i >= 0; --i) {
             for (int j = 0; j < map->width; ++j) {
                 auto pos = Position(j, i);
                 if (neighbours[map->abs_position(pos)].empty()) {
-                    std::cout << map->at(pos);
+                    stream << map->at(pos);
                 } else {
-                    std::cout << 'X';
+                    stream << 'X';
                 }
             }
-            std::cout << std::endl;
+            stream << std::endl;
         }
     }
 
-    void print_dot() {
-        printf("digraph diaminy {\n");
-        printf("\trankdir=TOP \n");
-        printf("\tnode [style=filled, shape=circle, color=lightgreen]; \n");
+    void print_dot(std::ostream &stream = std::cout) {
+        stream << "digraph diaminy {" << std::endl;
+        stream << "\trankdir=TOP" << std::endl;
+        stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
             if (!neighbours[i].empty()) {
                 Position position = map->rel_position(i);
                 for (Edge *e: neighbours[i]) {
-                    printf("\t\"(%d,%d)\" -> \"(%d,%d)\" [label=%d];\n",
-                           position.x, position.y, e->to.x, e->to.y, e->diamonds->size());
+                    stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << e->to.x << "," << e->to.y
+                           << ")\" [label=" << e->diamonds->size() << "];" << std::endl;
                 }
             }
         }
-        printf("\t\"(%d,%d)\" [color=gold]\n", map->shipInitialPosition.x, map->shipInitialPosition.y);
-        printf("}\n");
+        stream << "\t\"(" << map->shipInitialPosition.x << "," << map->shipInitialPosition.y << ")\" [color=gold]"
+               << std::endl;
+        stream << "}" << std::endl;
     }
 
-    void print_dot_path(std::vector<Edge *> *edges) {
-        printf("digraph diaminy {\n");
-        printf("\trankdir=TOP \n");
-        printf("\tnode [style=filled, shape=circle, color=lightgreen]; \n");
+    void save(const std::string &file_path) {
+        std::ofstream output_file;
+
+        output_file.open(file_path);
+        if (output_file.is_open()) {
+            print_dot(output_file);
+            output_file.close();
+        } else {
+            std::cerr << "Unable to open file" << std::endl;
+            std::cerr << strerror(errno) << std::endl;
+        }
+    }
+
+    void print_dot_path(std::vector<Edge *> *edges, std::ostream &stream = std::cout) {
+        stream << "digraph diaminy {" << std::endl;
+        stream << "\trankdir=TOP" << std::endl;
+        stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
             if (!neighbours[i].empty()) {
                 Position position = map->rel_position(i);
                 for (Edge *e: neighbours[i]) {
                     bool is_path = std::any_of(edges->begin(), edges->end(), [e](Edge *x) { return *x == *e; });
-                    printf("\t\"(%d,%d)\" -> \"(%d,%d)\" [label=%d%s];\n",
-                           position.x, position.y, e->to.x, e->to.y, e->diamonds->size(),
-                           is_path ? ", style=bold, color=tomato" : "");
+                    stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"("
+                           << e->to.x << "," << e->to.y << ")\" [label=" << e->diamonds->size()
+                           << (is_path ? ", style=bold, color=tomato" : "") << "];" << std::endl;
                 }
             }
         }
         for (Edge *e : *edges) {
-            printf("\t\"(%d,%d)\" [color=lightskyblue]\n", e->to.x, e->to.y);
+            stream << "\t\"(" << e->to.x << "," << e->to.y << ")\" [color=lightskyblue]" << std::endl;
         }
-        printf("\t\"(%d,%d)\" [color=gold]\n", map->shipInitialPosition.x, map->shipInitialPosition.y);
-        printf("}\n");
+        stream << "\t\"(" << map->shipInitialPosition.x << "," << map->shipInitialPosition.y << ")\" [color=gold]"
+               << std::endl;
+        stream << "}" << std::endl;
     }
 
     std::vector<Edge *>
@@ -453,20 +489,44 @@ public:
                                    new std::unordered_set<Position>(),
                                    diamonds->size(), maxLeaps);
         if (result->empty()) {
-            printf("BRAK\n");
+            std::cout << ("BRAK");
             delete result;
         } else {
-            for (const Edge *e : *result) {
-                printf("%d", e->direction);
-            }
+            print_path_numbers(*result);
             if (DebugMode) {
-                printf("\n");
+                std::cout << std::endl;
                 this->print_dot_path(result);
+
+                std::ofstream output_dot_file;
+                output_dot_file.open("sol.dot");
+                if (output_dot_file.is_open()) {
+                    this->print_dot_path(result, output_dot_file);
+                    output_dot_file.close();
+                } else {
+                    std::cerr << "Unable to open dot output file" << std::endl;
+                    std::cerr << strerror(errno) << std::endl;
+                }
+
+                std::ofstream output_path_file;
+                output_path_file.open("sol.txt");
+                if (output_path_file.is_open()) {
+                    print_path_numbers(*result, output_path_file);
+                    output_path_file.close();
+                } else {
+                    std::cerr << "Unable to open path output file" << std::endl;
+                    std::cerr << strerror(errno) << std::endl;
+                }
             }
             delete result;
         }
     }
 };
+
+void print_path_numbers(std::vector<Edge *> &edges, std::ostream &stream) {
+    for (const Edge *e : edges) {
+        stream << e->direction;
+    }
+}
 
 int main(int argc, char *argv[]) {
     try {
@@ -475,7 +535,10 @@ int main(int argc, char *argv[]) {
         if (DebugMode) map->print();
 
         Graph *graph = Graph::Generate(map);
-        if (DebugMode) graph->print_dot();
+        if (DebugMode) {
+            graph->print_dot();
+            graph->save("graph.dot");
+        }
 
         graph->traversal1(map->maxMoves);
 
