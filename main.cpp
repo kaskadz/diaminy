@@ -147,9 +147,9 @@ public:
                 case DIAX:
                     diamondsGathered->insert(nextPosition);
                 case VOID:
-                case SHIP:
                     currentPosition = nextPosition;
                     break;
+                case SHIP:
                 case HOLE:
                     return {nextPosition, diamondsGathered};
                 case WALL:
@@ -239,7 +239,7 @@ Map *Map::CreateFromInputStream(std::istream &stream) {
             if (map[i][j] == DIAX) {
                 targetScore++;
             } else if (map[i][j] == SHIP) {
-                map[i][j] = VOID;
+                map[i][j] = HOLE;
                 shipPosition = Position(j, i);
             }
         }
