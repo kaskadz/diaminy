@@ -168,6 +168,22 @@ public:
         return move(initial, (Direction) direction);
     }
 
+    std::vector<Position> *traverse(char *string_path) {
+        auto path = new std::vector<Position>();
+        Position current = this->shipInitialPosition;
+        for (int i = 0; string_path[i] != '\0'; ++i) {
+            if (string_path[i] < 48 || string_path[i] > 57)
+                throw "Wrong path";
+            MoveData md = this->move(current, string_path[i] - 48);
+            delete md.diamondsGathered;
+            if (md.finalPosition == current)
+                return path;
+            path->push_back(md.finalPosition);
+            current = md.finalPosition;
+        }
+        return path;
+    }
+
     int abs_position(Position position) {
         return width * position.y + position.x;
     }
@@ -530,17 +546,33 @@ void print_path_numbers(std::vector<Edge *> &edges, std::ostream &stream) {
 
 int main(int argc, char *argv[]) {
     try {
-        DebugMode = argc >= 2;
-        Map *map = (argc >= 2) ? ReadMapFromFile(argv[1]) : ReadMapFromStdin();
+        DebugMode = argc > 1;
+        Map *map = (argc > 1) ? ReadMapFromFile(argv[1]) : ReadMapFromStdin();
         if (DebugMode) map->print();
 
-        Graph *graph = Graph::Generate(map);
-        if (DebugMode) {
-            graph->print_dot();
-            graph->save("graph.dot");
-        }
+        if (argc > 2) {
+            auto path = map->traverse(argv[2]);
+            std::ofstream output_path_file;
+            output_path_file.open("path.txt");
+            if (output_path_file.is_open()) {
+                for (Position p : *path) {
+                    output_path_file << p.x << "," << p.y << std::endl;
+                }
+                output_path_file.close();
+            } else {
+                std::cerr << "Unable to open path file" << std::endl;
+                std::cerr << strerror(errno) << std::endl;
+            }
+            delete path;
+        } else {
+            Graph *graph = Graph::Generate(map);
+            if (DebugMode) {
+                graph->print_dot();
+                graph->save("graph.dot");
+            }
 
-        graph->traversal1(map->maxMoves);
+            graph->traversal1(map->maxMoves);
+        }
 
         delete map;
     } catch (const char *e) {
