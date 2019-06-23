@@ -619,6 +619,24 @@ void check_path(Map *map, char *path_name) {
     delete path;
 }
 
+void solve(Map *map) {
+    Graph *graph = Graph::Generate(map);
+    if (DebugMode) {
+        graph->print_dot();
+        graph->save("graph.dot");
+        Stats.non_empty_nodes = std::count_if(graph->neighbours->begin(), graph->neighbours->end(),
+                                              [](std::vector<Edge *> v) { return !v.empty(); });
+        Stats.diamonds = graph->diamonds->size();
+        for (const std::vector<Edge *> &v : *graph->neighbours) {
+            Stats.edges += v.size();
+        }
+    }
+
+    graph->traversal1(map->maxMoves);
+    if (DebugMode) Stats.save("log.csv");
+    delete graph;
+}
+
 int main(int argc, char *argv[]) {
     try {
         DebugMode = argc > 1;
@@ -634,21 +652,7 @@ int main(int argc, char *argv[]) {
         if (argc > 2) {
             check_path(map, argv[2]);
         } else {
-            Graph *graph = Graph::Generate(map);
-            if (DebugMode) {
-                graph->print_dot();
-                graph->save("graph.dot");
-                Stats.non_empty_nodes = std::count_if(graph->neighbours->begin(), graph->neighbours->end(),
-                                                      [](std::vector<Edge *> v) { return !v.empty(); });
-                Stats.diamonds = graph->diamonds->size();
-                for (const std::vector<Edge *> &v : *graph->neighbours) {
-                    Stats.edges += v.size();
-                }
-            }
-
-            graph->traversal1(map->maxMoves);
-            if (DebugMode) Stats.save("log.csv");
-            delete graph;
+            solve(map);
         }
 
         delete map;
