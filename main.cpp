@@ -419,6 +419,11 @@ public:
     }
 
     ~Graph() {
+        for (const auto &v : *neighbours) {
+            for (Edge *e : v) {
+                delete e;
+            }
+        }
         delete neighbours;
     }
 
