@@ -504,8 +504,8 @@ public:
     }
 
     std::vector<Edge *>
-    *traversal1_1(Position v, std::vector<Edge *> *edges_visited, std::unordered_set<Position> *diamonds_gathered,
-                  int max_diamonds, int max_leaps) {
+    *traversal_sub(Position v, std::vector<Edge *> *edges_visited, std::unordered_set<Position> *diamonds_gathered,
+                   int max_diamonds, int max_leaps) {
         if (diamonds_gathered->size() > max_diamonds) throw "Too much diamonds";
         if (edges_visited->size() > max_leaps) throw "Too much leaps";
 
@@ -538,7 +538,7 @@ public:
                     new_diamonds_gathered->insert(diax);
                 }
 
-                auto result = traversal1_1(e->to, new_edges_visited, new_diamonds_gathered, max_diamonds, max_leaps);
+                auto result = traversal_sub(e->to, new_edges_visited, new_diamonds_gathered, max_diamonds, max_leaps);
 
                 if (result->empty()) {
                     delete result;
@@ -559,10 +559,10 @@ public:
         return new std::vector<Edge *>();
     }
 
-    void traversal1(int maxLeaps) {
-        auto result = traversal1_1(map->shipInitialPosition, new std::vector<Edge *>(),
-                                   new std::unordered_set<Position>(),
-                                   diamonds->size(), maxLeaps);
+    void traversal(int maxLeaps) {
+        auto result = traversal_sub(map->shipInitialPosition, new std::vector<Edge *>(),
+                                    new std::unordered_set<Position>(),
+                                    diamonds->size(), maxLeaps);
         if (result->empty()) {
             std::cout << ("BRAK");
             delete result;
@@ -632,7 +632,7 @@ void solve(Map *map) {
         }
     }
 
-    graph->traversal1(map->maxMoves);
+    graph->traversal(map->maxMoves);
     if (DebugMode) Stats.save("log.csv");
     delete graph;
 }
