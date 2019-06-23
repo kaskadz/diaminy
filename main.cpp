@@ -11,6 +11,53 @@
 
 bool DebugMode;
 
+struct stats {
+public:
+    std::string case_name;
+    unsigned int height = 0;
+    unsigned int width = 0;
+    unsigned int max_leaps = 0;
+    unsigned int diamonds = 0;
+    unsigned int non_empty_nodes = 0;
+    unsigned int edges = 0;
+    unsigned int edges_visited = 0;
+    unsigned int diamonds_gathered = 0;
+    unsigned long long int iterations = 0;
+    unsigned long long int gu_leap_limit = 0;
+    unsigned long long int gu_no_path = 0;
+
+private:
+    static bool exists(const std::string &filename) {
+        std::ifstream ifile(filename);
+        return ifile.is_open();
+    }
+
+public:
+    void save(const std::string &filename) {
+        char sep = ',';
+        bool needs_header_init = !exists(filename);
+
+        std::ofstream log_file;
+        log_file.open(filename, std::ios_base::out | std::ios_base::app);
+        if (log_file.is_open()) {
+            if (needs_header_init)
+                log_file << "case_name" << sep << "height" << sep << "width" << sep << "max_leaps" << sep << "diamonds"
+                         << sep << "non_empty_nodes" << sep << "edges" << sep << "edges_visited" << sep
+                         << "diamonds_gathered" << sep << "iterations" << sep << "gu_leap_limit" << sep << "gu_no_path"
+                         << std::endl;
+
+            log_file << case_name << sep << height << sep << width << sep << max_leaps << sep << diamonds
+                     << sep << non_empty_nodes << sep << edges << sep << edges_visited << sep
+                     << diamonds_gathered << sep << iterations << sep << gu_leap_limit << sep << gu_no_path
+                     << std::endl;
+            log_file.close();
+        } else {
+            std::cerr << "Unable to open log file" << std::endl;
+            std::cerr << strerror(errno) << std::endl;
+        }
+    }
+} Stats;
+
 enum Entity {
     SHIP = '.',
     WALL = '#',
@@ -333,19 +380,19 @@ class Graph {
 private:
     Map *map;
 public:
-    std::vector<Edge *> *neighbours;
     int const size;
     std::unordered_set<Position> *diamonds;
+    std::vector<std::vector<Edge *>> *neighbours;
 
 private:
-    explicit Graph(std::vector<Edge *> *vertex, int size, Map *map, std::unordered_set<Position> *diamonds)
+    explicit Graph(std::vector<std::vector<Edge *>> *vertex, int size, Map *map, std::unordered_set<Position> *diamonds)
             : neighbours(vertex), size(size), map(map), diamonds(diamonds) {
     }
 
 public:
 
     static Graph *Generate(Map *map) {
-        auto neighbours = new std::vector<Edge *>[map->abs_positions()];
+        auto neighbours = new std::vector<std::vector<Edge *>>(map->abs_positions());
         auto diamonds = map->get_diamonds();
 
         std::queue<Position> positions;
@@ -353,14 +400,14 @@ public:
         while (!positions.empty()) {
             Position currentPosition = positions.front();
             positions.pop();
-            if (neighbours[map->abs_position(currentPosition)].empty()) {
+            if (neighbours->at(map->abs_position(currentPosition)).empty()) {
                 for (int d = 0; d < 8; ++d) {
                     MoveData md = map->move(currentPosition, d);
                     if (md.finalPosition != currentPosition) {
                         Edge *e = new Edge(md.diamondsGathered, d, currentPosition, md.finalPosition);
-                        neighbours[map->abs_position(currentPosition)].push_back(e);
+                        neighbours->at(map->abs_position(currentPosition)).push_back(e);
 
-                        if (neighbours[map->abs_position(md.finalPosition)].empty()) {
+                        if (neighbours->at(map->abs_position(md.finalPosition)).empty()) {
                             positions.push(md.finalPosition);
                         }
                     }
@@ -377,10 +424,10 @@ public:
 
     void print() {
         for (int i = 0; i < size; ++i) {
-            if (!neighbours[i].empty()) {
+            if (!neighbours->at(i).empty()) {
                 Position position = map->rel_position(i);
                 printf("(%d,%d): ", position.x, position.y);
-                for (Edge *e : neighbours[i]) {
+                for (Edge *e : neighbours->at(i)) {
                     printf("{(%d,%d), %d, %d} ", e->to.x, e->to.y, e->diamonds->size(), e->direction);
                 }
                 printf("\n");
@@ -392,7 +439,7 @@ public:
         for (int i = map->height - 1; i >= 0; --i) {
             for (int j = 0; j < map->width; ++j) {
                 auto pos = Position(j, i);
-                if (neighbours[map->abs_position(pos)].empty()) {
+                if (neighbours->at(map->abs_position(pos)).empty()) {
                     stream << map->at(pos);
                 } else {
                     stream << 'X';
@@ -407,9 +454,9 @@ public:
         stream << "\trankdir=TOP" << std::endl;
         stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
-            if (!neighbours[i].empty()) {
+            if (!neighbours->at(i).empty()) {
                 Position position = map->rel_position(i);
-                for (Edge *e: neighbours[i]) {
+                for (Edge *e: neighbours->at(i)) {
                     stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << e->to.x << "," << e->to.y
                            << ")\" [label=" << e->diamonds->size() << "];" << std::endl;
                 }
@@ -438,9 +485,9 @@ public:
         stream << "\trankdir=TOP" << std::endl;
         stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
-            if (!neighbours[i].empty()) {
+            if (!neighbours->at(i).empty()) {
                 Position position = map->rel_position(i);
-                for (Edge *e: neighbours[i]) {
+                for (Edge *e: neighbours->at(i)) {
                     bool is_path = std::any_of(edges->begin(), edges->end(), [e](Edge *x) { return *x == *e; });
                     stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"("
                            << e->to.x << "," << e->to.y << ")\" [label=" << e->diamonds->size()
@@ -462,19 +509,27 @@ public:
         if (diamonds_gathered->size() > max_diamonds) throw "Too much diamonds";
         if (edges_visited->size() > max_leaps) throw "Too much leaps";
 
+        if (DebugMode) {
+            Stats.iterations++;
+        }
+
         if (diamonds_gathered->size() == max_diamonds) {
             delete diamonds_gathered;
             return edges_visited;
         }
 
         if (edges_visited->size() == max_leaps) {
+            if (DebugMode) {
+                Stats.gu_leap_limit++;
+            }
             delete edges_visited;
             delete diamonds_gathered;
             return new std::vector<Edge *>();
         }
 
-        for (Edge *e : neighbours[map->abs_position(v)]) {
-            if (std::all_of(edges_visited->begin(), edges_visited->end(), [e](Edge *x) { return *x != *e; })) {
+        for (Edge *e : neighbours->at(map->abs_position(v))) {
+            if (std::all_of(edges_visited->begin(), edges_visited->end(),
+                            [e](Edge *x) { return *x != *e; })) {
                 auto new_edges_visited = new std::vector<Edge *>(*edges_visited);
                 new_edges_visited->push_back(e);
 
@@ -493,6 +548,10 @@ public:
                     return result;
                 }
             }
+        }
+
+        if (DebugMode) {
+            Stats.gu_no_path++;
         }
 
         delete diamonds_gathered;
@@ -544,34 +603,52 @@ void print_path_numbers(std::vector<Edge *> &edges, std::ostream &stream) {
     }
 }
 
+void check_path(Map *map, char *path_name) {
+    auto path = map->traverse(path_name);
+    std::ofstream output_path_file;
+    output_path_file.open("path.txt");
+    if (output_path_file.is_open()) {
+        for (Position p : *path) {
+            output_path_file << p.x << "," << p.y << std::endl;
+        }
+        output_path_file.close();
+    } else {
+        std::cerr << "Unable to open path file" << std::endl;
+        std::cerr << strerror(errno) << std::endl;
+    }
+    delete path;
+}
+
 int main(int argc, char *argv[]) {
     try {
         DebugMode = argc > 1;
         Map *map = (argc > 1) ? ReadMapFromFile(argv[1]) : ReadMapFromStdin();
-        if (DebugMode) map->print();
+        if (DebugMode) {
+            map->print();
+            Stats.case_name = argv[1];
+            Stats.height = map->height;
+            Stats.width = map->width;
+            Stats.max_leaps = map->maxMoves;
+        }
 
         if (argc > 2) {
-            auto path = map->traverse(argv[2]);
-            std::ofstream output_path_file;
-            output_path_file.open("path.txt");
-            if (output_path_file.is_open()) {
-                for (Position p : *path) {
-                    output_path_file << p.x << "," << p.y << std::endl;
-                }
-                output_path_file.close();
-            } else {
-                std::cerr << "Unable to open path file" << std::endl;
-                std::cerr << strerror(errno) << std::endl;
-            }
-            delete path;
+            check_path(map, argv[2]);
         } else {
             Graph *graph = Graph::Generate(map);
             if (DebugMode) {
                 graph->print_dot();
                 graph->save("graph.dot");
+                Stats.non_empty_nodes = std::count_if(graph->neighbours->begin(), graph->neighbours->end(),
+                                                      [](std::vector<Edge *> v) { return !v.empty(); });
+                Stats.diamonds = graph->diamonds->size();
+                for (const std::vector<Edge *> &v : *graph->neighbours) {
+                    Stats.edges += v.size();
+                }
             }
 
             graph->traversal1(map->maxMoves);
+            if (DebugMode) Stats.save("log.csv");
+            delete graph;
         }
 
         delete map;
