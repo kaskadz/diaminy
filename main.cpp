@@ -182,7 +182,7 @@ public:
         printf("m: %d t: %d\n", maxMoves, targetScore);
         printf("s: (%d, %d)\n", shipInitialPosition.x, shipInitialPosition.y);
 
-        PrintToOutputStream(std::cout);
+        print_to_output_stream(std::cout);
     }
 
     MoveData move(Position initial, Direction direction) {
@@ -255,7 +255,7 @@ public:
         return diamonds;
     }
 
-    void PrintToOutputStream(std::ostream &stream) {
+    void print_to_output_stream(std::ostream &stream) {
         for (int i = height - 1; i >= 0; --i) {
             for (int j = 0; j < width; ++j) {
                 stream << at(j, i);
@@ -271,7 +271,7 @@ public:
         if (output_file.is_open()) {
             output_file << height << ' ' << width << std::endl;
             output_file << maxMoves << std::endl;
-            PrintToOutputStream(output_file);
+            print_to_output_stream(output_file);
             output_file.close();
         } else {
             std::cerr << "Unable to open file" << std::endl;
@@ -374,7 +374,7 @@ namespace std {
     };
 }
 
-void print_path_numbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
+void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
 
 class Graph {
 private:
@@ -567,7 +567,7 @@ public:
             std::cout << ("BRAK");
             delete result;
         } else {
-            print_path_numbers(*result);
+            PrintPathNumbers(*result);
             if (DebugMode) {
                 std::cout << std::endl;
                 this->print_dot_path(result);
@@ -585,7 +585,7 @@ public:
                 std::ofstream output_path_file;
                 output_path_file.open("sol.txt");
                 if (output_path_file.is_open()) {
-                    print_path_numbers(*result, output_path_file);
+                    PrintPathNumbers(*result, output_path_file);
                     output_path_file.close();
                 } else {
                     std::cerr << "Unable to open path output file" << std::endl;
@@ -597,13 +597,13 @@ public:
     }
 };
 
-void print_path_numbers(std::vector<Edge *> &edges, std::ostream &stream) {
+void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream) {
     for (const Edge *e : edges) {
         stream << e->direction;
     }
 }
 
-void check_path(Map *map, char *path_name) {
+void CheckPath(Map *map, char *path_name) {
     auto path = map->traverse(path_name);
     std::ofstream output_path_file;
     output_path_file.open("path.txt");
@@ -619,7 +619,7 @@ void check_path(Map *map, char *path_name) {
     delete path;
 }
 
-void solve(Map *map) {
+void Solve(Map *map) {
     Graph *graph = Graph::Generate(map);
     if (DebugMode) {
         graph->print_dot();
@@ -650,9 +650,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (argc > 2) {
-            check_path(map, argv[2]);
+            CheckPath(map, argv[2]);
         } else {
-            solve(map);
+            Solve(map);
         }
 
         delete map;
