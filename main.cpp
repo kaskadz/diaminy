@@ -58,7 +58,7 @@ public:
     }
 } Stats;
 
-enum Entity {
+enum Entity : char {
     SHIP = '.',
     WALL = '#',
     HOLE = 'O',
