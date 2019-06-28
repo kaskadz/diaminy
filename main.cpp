@@ -1,7 +1,10 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "hicpp-exception-baseclass"
 #include <iostream>
 #include <fstream>
 #include <cstring>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <queue>
 #include <stack>
@@ -374,6 +377,18 @@ namespace std {
     };
 }
 
+class Vertex {
+public:
+    std::array<Edge *, 8> edge{};
+    std::vector<Edge *> edges{};
+    int out_deg;
+    int in_deg;
+
+    Vertex() : out_deg(0), in_deg(0) {
+        edge.fill(nullptr);
+    }
+};
+
 void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
 
 class Graph {
@@ -382,57 +397,69 @@ private:
 public:
     int const size;
     std::unordered_set<Position> *diamonds;
-    std::vector<std::vector<Edge *>> *neighbours;
+    std::vector<Vertex *> *vertices;
 
 private:
-    explicit Graph(std::vector<std::vector<Edge *>> *vertex, int size, Map *map, std::unordered_set<Position> *diamonds)
-            : neighbours(vertex), size(size), map(map), diamonds(diamonds) {
+    explicit Graph(std::vector<Vertex *> *vertices, int size, Map *map, std::unordered_set<Position> *diamonds)
+            : vertices(vertices), size(size), map(map), diamonds(diamonds) {
     }
 
 public:
 
     static Graph *Generate(Map *map) {
-        auto neighbours = new std::vector<std::vector<Edge *>>(map->abs_positions());
+        auto vertices = new std::vector<Vertex *>(map->abs_positions());
         auto diamonds = map->get_diamonds();
 
         std::queue<Position> positions;
         positions.push(map->shipInitialPosition);
+        vertices->at(map->abs_position(map->shipInitialPosition)) = new Vertex();
         while (!positions.empty()) {
             Position currentPosition = positions.front();
             positions.pop();
-            if (neighbours->at(map->abs_position(currentPosition)).empty()) {
-                for (int d = 0; d < 8; ++d) {
-                    MoveData md = map->move(currentPosition, d);
-                    if (md.finalPosition != currentPosition) {
-                        Edge *e = new Edge(md.diamondsGathered, d, currentPosition, md.finalPosition);
-                        neighbours->at(map->abs_position(currentPosition)).push_back(e);
+            int current_abs_position = map->abs_position(currentPosition);
 
-                        if (neighbours->at(map->abs_position(md.finalPosition)).empty()) {
-                            positions.push(md.finalPosition);
-                        }
+            Vertex *&currentVertex = vertices->at(current_abs_position);
+            if (currentVertex == nullptr) {
+                throw "Some vertex was not initialized!";
+            }
+            for (int d = 0; d < 8; ++d) {
+                MoveData md = map->move(currentPosition, d);
+                if (md.finalPosition != currentPosition) {
+                    Edge *e = new Edge(md.diamondsGathered, d, currentPosition, md.finalPosition);
+                    currentVertex->edge[d] = e;
+                    currentVertex->edges.push_back(e);
+                    currentVertex->out_deg++;
+
+                    int final_abs_position = map->abs_position(md.finalPosition);
+                    if (vertices->at(final_abs_position) == nullptr) {
+                        vertices->at(final_abs_position) = new Vertex();
+                        positions.push(md.finalPosition);
                     }
+                    vertices->at(final_abs_position)->in_deg++;
                 }
             }
         }
 
-        return new Graph(neighbours, map->abs_positions(), map, diamonds);
+        return new Graph(vertices, map->abs_positions(), map, diamonds);
     }
 
     ~Graph() {
-        for (const auto &v : *neighbours) {
-            for (Edge *e : v) {
-                delete e;
+        for (const auto &v : *vertices) {
+            if (v != nullptr) {
+                for (Edge *e : v->edges) {
+                    delete e;
+                }
             }
         }
-        delete neighbours;
+        delete vertices;
     }
 
     void print() {
         for (int i = 0; i < size; ++i) {
-            if (!neighbours->at(i).empty()) {
+            if (vertices->at(i) != nullptr) {
                 Position position = map->rel_position(i);
                 printf("(%d,%d): ", position.x, position.y);
-                for (Edge *e : neighbours->at(i)) {
+                for (Edge *e : vertices->at(i)->edges) {
                     printf("{(%d,%d), %d, %d} ", e->to.x, e->to.y, e->diamonds->size(), e->direction);
                 }
                 printf("\n");
@@ -444,7 +471,7 @@ public:
         for (int i = map->height - 1; i >= 0; --i) {
             for (int j = 0; j < map->width; ++j) {
                 auto pos = Position(j, i);
-                if (neighbours->at(map->abs_position(pos)).empty()) {
+                if (vertices->at(map->abs_position(pos)) == nullptr) {
                     stream << map->at(pos);
                 } else {
                     stream << 'X';
@@ -459,11 +486,11 @@ public:
         stream << "\trankdir=TOP" << std::endl;
         stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
-            if (!neighbours->at(i).empty()) {
+            if (vertices->at(i) != nullptr) {
                 Position position = map->rel_position(i);
-                for (Edge *e: neighbours->at(i)) {
-                    stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << e->to.x << "," << e->to.y
-                           << ")\" [label=" << e->diamonds->size() << "];" << std::endl;
+                for (Edge *e: vertices->at(i)->edges) {
+                    stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << e->to.x << ","
+                           << e->to.y << ")\" [label=" << e->diamonds->size() << "];" << std::endl;
                 }
             }
         }
@@ -490,9 +517,9 @@ public:
         stream << "\trankdir=TOP" << std::endl;
         stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
-            if (!neighbours->at(i).empty()) {
+            if (vertices->at(i) != nullptr) {
                 Position position = map->rel_position(i);
-                for (Edge *e: neighbours->at(i)) {
+                for (Edge *e: vertices->at(i)->edges) {
                     bool is_path = std::any_of(edges->begin(), edges->end(), [e](Edge *x) { return *x == *e; });
                     stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"("
                            << e->to.x << "," << e->to.y << ")\" [label=" << e->diamonds->size()
@@ -513,6 +540,7 @@ public:
                    int max_diamonds, int max_leaps) {
         if (diamonds_gathered->size() > max_diamonds) throw "Too much diamonds";
         if (edges_visited->size() > max_leaps) throw "Too much leaps";
+        if (vertices->at(map->abs_position(v)) == nullptr) throw "Encountered a null vertex";
 
         if (DebugMode) {
             Stats.iterations++;
@@ -532,7 +560,7 @@ public:
             return new std::vector<Edge *>();
         }
 
-        for (Edge *e : neighbours->at(map->abs_position(v))) {
+        for (Edge *e : vertices->at(map->abs_position(v))->edges) {
             if (std::all_of(edges_visited->begin(), edges_visited->end(),
                             [e](Edge *x) { return *x != *e; })) {
                 auto new_edges_visited = new std::vector<Edge *>(*edges_visited);
@@ -629,11 +657,13 @@ void Solve(Map *map) {
     if (DebugMode) {
         graph->print_dot();
         graph->save("graph.dot");
-        Stats.non_empty_nodes = std::count_if(graph->neighbours->begin(), graph->neighbours->end(),
-                                              [](std::vector<Edge *> v) { return !v.empty(); });
+//        Stats.non_empty_nodes = std::count_if(graph->vertices->begin(), graph->vertices->end(),
+//                                              [](std::vector<Edge *> v) { return !v.empty(); });
         Stats.diamonds = graph->diamonds->size();
-        for (const std::vector<Edge *> &v : *graph->neighbours) {
-            Stats.edges += v.size();
+        for (const auto &v : *graph->vertices) {
+            if (v != nullptr) {
+                Stats.edges += v->out_deg;
+            }
         }
     }
 
@@ -667,3 +697,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+#pragma clang diagnostic pop
