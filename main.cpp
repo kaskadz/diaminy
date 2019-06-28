@@ -137,7 +137,7 @@ struct MoveData {
 
 class Map {
 private:
-    char **map;
+    char **map; // TODO: Linearise this array
 
     Map(int height, int width, int maxMoves, char **map, Position shipPosition, int targetScore)
             : height(height), width(width), maxMoves(maxMoves), map(map), shipInitialPosition(shipPosition),
@@ -236,7 +236,7 @@ public:
         return path;
     }
 
-    int abs_position(Position position) {
+    int abs_position(Position position) { // TODO: Implement this one as Position's member
         return width * position.y + position.x;
     }
 
@@ -405,7 +405,7 @@ private:
 
 public:
 
-    static Graph *Generate(Map *map) {
+    static Graph *Generate(Map *map) { // TODO: Move generation to Graph's constructor
         auto vertices = new std::map<int, Vertex *>();
         auto diamonds = map->get_diamonds();
 
