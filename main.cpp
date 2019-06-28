@@ -151,12 +151,7 @@ public:
     int const targetScore;
     const Position shipInitialPosition;
 
-    ~Map() {
-        for (int i = 0; i < height; ++i) {
-            delete[] map[i];
-        }
-        delete[] map;
-    };
+    ~Map();;
 
     const char at(int x, int y);
 
@@ -519,6 +514,13 @@ void Map::set(int x, int y, Entity e) {
     }
 
     map[y][x] = e;
+}
+
+Map::~Map() {
+    for (int i = 0; i < height; ++i) {
+        delete[] map[i];
+    }
+    delete[] map;
 }
 
 //endregion
