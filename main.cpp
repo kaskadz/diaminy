@@ -214,12 +214,11 @@ class Graph {
 private:
     Map *map;
 public:
-    int const size;
     std::unordered_set<Position> *diamonds;
     std::map<int, Vertex *> *vertices;
 
 private:
-    explicit Graph(std::map<int, Vertex *> *vertices, int size, Map *map, std::unordered_set<Position> *diamonds);
+    explicit Graph(std::map<int, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds);
 
 public:
 
@@ -625,16 +624,14 @@ void Graph::print_dot_path(std::vector<Edge *> *edges, std::ostream &stream) {
     stream << "digraph diaminy {" << std::endl;
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
-    for (int i = 0; i < size; ++i) {
-        if (vertices->count(i) > 0) {
-            Position position = map->rel_position(i);
-            for (auto kv: vertices->at(i)->edges) {
-                bool is_path = std::any_of(edges->begin(), edges->end(),
-                                           [e = kv.second](Edge *x) { return *x == *e; });
-                stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"("
-                       << kv.second->to.x << "," << kv.second->to.y << ")\" [label=" << kv.second->diamonds->size()
-                       << (is_path ? ", style=bold, color=tomato" : "") << "];" << std::endl;
-            }
+    for (auto vkv : *vertices) {
+        Position position = map->rel_position(vkv.first);
+        for (auto ekv: vkv.second->edges) {
+            bool is_path = std::any_of(edges->begin(), edges->end(),
+                                       [e = ekv.second](Edge *x) { return *x == *e; });
+            stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"("
+                   << ekv.second->to.x << "," << ekv.second->to.y << ")\" [label=" << ekv.second->diamonds->size()
+                   << (is_path ? ", style=bold, color=tomato" : "") << "];" << std::endl;
         }
     }
     for (Edge *e : *edges) {
@@ -662,13 +659,11 @@ void Graph::print_dot(std::ostream &stream) {
     stream << "digraph diaminy {" << std::endl;
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
-    for (int i = 0; i < size; ++i) {
-        if (vertices->count(i) > 0) {
-            Position position = map->rel_position(i);
-            for (auto kv: vertices->at(i)->edges) {
-                stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << kv.second->to.x << ","
-                       << kv.second->to.y << ")\" [label=" << kv.second->diamonds->size() << "];" << std::endl;
-            }
+    for (auto vkv : *vertices) {
+        Position position = map->rel_position(vkv.first);
+        for (auto ekv: vkv.second->edges) {
+            stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << ekv.second->to.x << ","
+                   << ekv.second->to.y << ")\" [label=" << ekv.second->diamonds->size() << "];" << std::endl;
         }
     }
     stream << "\t\"(" << map->shipInitialPosition.x << "," << map->shipInitialPosition.y << ")\" [color=gold]"
@@ -691,16 +686,14 @@ void Graph::print_visited_map(std::ostream &stream) {
 }
 
 void Graph::print() {
-    for (int i = 0; i < size; ++i) {
-        if (vertices->count(i) > 0) {
-            Position position = map->rel_position(i);
-            printf("(%d,%d): ", position.x, position.y);
-            for (auto kv : vertices->at(i)->edges) {
-                printf("{(%d,%d), %d, %d} ", kv.second->to.x, kv.second->to.y, kv.second->diamonds->size(),
-                       kv.second->direction);
-            }
-            printf("\n");
+    for (auto vkv : *vertices) {
+        Position position = map->rel_position(vkv.first);
+        printf("(%d,%d): ", position.x, position.y);
+        for (auto ekv : vkv.second->edges) {
+            printf("{(%d,%d), %d, %d} ", ekv.second->to.x, ekv.second->to.y, ekv.second->diamonds->size(),
+                   ekv.second->direction);
         }
+        printf("\n");
     }
 }
 
@@ -737,11 +730,11 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
         }
     }
 
-    return new Graph(vertices, map->abs_positions(), map, diamonds);
+    return new Graph(vertices, map, diamonds);
 }
 
-Graph::Graph(std::map<int, Vertex *> *vertices, int size, Map *map, std::unordered_set<Position> *diamonds)
-        : vertices(vertices), size(size), map(map), diamonds(diamonds) {
+Graph::Graph(std::map<int, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds)
+        : vertices(vertices), map(map), diamonds(diamonds) {
 }
 
 Graph::~Graph() {
