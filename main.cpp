@@ -381,14 +381,11 @@ namespace std {
 
 class Vertex {
 public:
-    std::array<Edge *, 8> edge{};
-    std::vector<Edge *> edges{};
+    std::map<Direction, Edge *> edges{};
     int out_deg;
     int in_deg;
 
-    Vertex() : out_deg(0), in_deg(0) {
-        edge.fill(nullptr);
-    }
+    Vertex() : out_deg(0), in_deg(0) {}
 };
 
 void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
@@ -428,8 +425,7 @@ public:
                 MoveData md = map->move(currentPosition, d);
                 if (md.finalPosition != currentPosition) {
                     Edge *e = new Edge(md.diamondsGathered, d, currentPosition, md.finalPosition);
-                    currentVertex->edge[d] = e;
-                    currentVertex->edges.push_back(e);
+                    currentVertex->edges.insert(std::pair<Direction, Edge *>((Direction) d, e));
                     currentVertex->out_deg++;
 
                     int final_abs_position = map->abs_position(md.finalPosition);
@@ -447,8 +443,8 @@ public:
 
     ~Graph() {
         for (const auto &kv : *vertices) {
-            for (Edge *e : kv.second->edges) {
-                delete e;
+            for (auto ekv : kv.second->edges) {
+                delete ekv.second;
             }
         }
         delete vertices;
@@ -459,8 +455,9 @@ public:
             if (vertices->count(i) > 0) {
                 Position position = map->rel_position(i);
                 printf("(%d,%d): ", position.x, position.y);
-                for (Edge *e : vertices->at(i)->edges) {
-                    printf("{(%d,%d), %d, %d} ", e->to.x, e->to.y, e->diamonds->size(), e->direction);
+                for (auto kv : vertices->at(i)->edges) {
+                    printf("{(%d,%d), %d, %d} ", kv.second->to.x, kv.second->to.y, kv.second->diamonds->size(),
+                           kv.second->direction);
                 }
                 printf("\n");
             }
@@ -488,9 +485,9 @@ public:
         for (int i = 0; i < size; ++i) {
             if (vertices->count(i) > 0) {
                 Position position = map->rel_position(i);
-                for (Edge *e: vertices->at(i)->edges) {
-                    stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << e->to.x << ","
-                           << e->to.y << ")\" [label=" << e->diamonds->size() << "];" << std::endl;
+                for (auto kv: vertices->at(i)->edges) {
+                    stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << kv.second->to.x << ","
+                           << kv.second->to.y << ")\" [label=" << kv.second->diamonds->size() << "];" << std::endl;
                 }
             }
         }
@@ -519,10 +516,11 @@ public:
         for (int i = 0; i < size; ++i) {
             if (vertices->count(i) > 0) {
                 Position position = map->rel_position(i);
-                for (Edge *e: vertices->at(i)->edges) {
-                    bool is_path = std::any_of(edges->begin(), edges->end(), [e](Edge *x) { return *x == *e; });
+                for (auto kv: vertices->at(i)->edges) {
+                    bool is_path = std::any_of(edges->begin(), edges->end(),
+                                               [e = kv.second](Edge *x) { return *x == *e; });
                     stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"("
-                           << e->to.x << "," << e->to.y << ")\" [label=" << e->diamonds->size()
+                           << kv.second->to.x << "," << kv.second->to.y << ")\" [label=" << kv.second->diamonds->size()
                            << (is_path ? ", style=bold, color=tomato" : "") << "];" << std::endl;
                 }
             }
@@ -560,18 +558,19 @@ public:
             return new std::vector<Edge *>();
         }
 
-        for (Edge *e : vertices->at(map->abs_position(v))->edges) {
+        for (auto kv : vertices->at(map->abs_position(v))->edges) {
             if (std::all_of(edges_visited->begin(), edges_visited->end(),
-                            [e](Edge *x) { return *x != *e; })) {
+                            [e = kv.second](Edge *x) { return *x != *e; })) {
                 auto new_edges_visited = new std::vector<Edge *>(*edges_visited);
-                new_edges_visited->push_back(e);
+                new_edges_visited->push_back(kv.second);
 
                 auto new_diamonds_gathered = new std::unordered_set<Position>(*diamonds_gathered);
-                for (Position diax : *(e->diamonds)) {
+                for (Position diax : *(kv.second->diamonds)) {
                     new_diamonds_gathered->insert(diax);
                 }
 
-                auto result = traversal_sub(e->to, new_edges_visited, new_diamonds_gathered, max_diamonds, max_leaps);
+                auto result = traversal_sub(kv.second->to, new_edges_visited, new_diamonds_gathered, max_diamonds,
+                                            max_leaps);
 
                 if (result->empty()) {
                     delete result;
