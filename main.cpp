@@ -754,7 +754,7 @@ void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream) {
 
 void CheckPath(Map *map, char *pathName) {
     auto path = map->traverse(pathName);
-    std::ofstream output_path_file;
+    std::ofstream output_path_file; // TODO: Choose naming convention for local variables: `snake_case` or `javaCase`
     output_path_file.open("path.txt");
     if (output_path_file.is_open()) {
         for (Position p : *path) {
