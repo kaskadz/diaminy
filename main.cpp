@@ -122,7 +122,7 @@ public:
 
     Position move(Direction direction);
 
-    int abs_on(Map *map) const;
+    int absoluteOn(Map *map) const;
 
     bool operator==(const Position &rhs) const;
 
@@ -163,15 +163,15 @@ public:
 
     MoveData move(Position initial, int direction);
 
-    std::vector<Position> *traverse(char *string_path);
+    std::vector<Position> *traverse(char *stringPath);
 
-    Position rel_position(int pos);
+    Position relativePosition(int pos);
 
-    std::unordered_set<Position> *get_diamonds();
+    std::unordered_set<Position> *getDiamonds();
 
-    void print_to_output_stream(std::ostream &stream);
+    void printToOutputStream(std::ostream &stream);
 
-    void save(const std::string &file_path);
+    void save(const std::string &filePath);
 
     static Map *CreateFromInputStream(std::istream &stream);
 };
@@ -187,7 +187,7 @@ public:
 
     ~Edge();
 
-    bool is_reverse(Edge *e) const;
+    bool isReverse(Edge *e) const;
 
     bool operator==(const Edge &rhs) const;
 
@@ -197,10 +197,10 @@ public:
 class Vertex {
 public:
     std::map<Direction, Edge *> edges{};
-    int out_deg;
-    int in_deg;
+    int outDeg;
+    int inDeg;
 
-    Vertex() : out_deg(0), in_deg(0) {}
+    Vertex() : outDeg(0), inDeg(0) {}
 };
 
 class Graph {
@@ -221,17 +221,17 @@ public:
 
     void print();
 
-    void print_visited_map(std::ostream &stream = std::cout);
+    void printVisitedMap(std::ostream &stream = std::cout);
 
-    void print_dot(std::ostream &stream = std::cout);
+    void printDot(std::ostream &stream = std::cout);
 
-    void save(const std::string &file_path);
+    void save(const std::string &filePath);
 
-    void print_dot_path(std::vector<Edge *> *edges, std::ostream &stream = std::cout);
+    void printDotPath(std::vector<Edge *> *edges, std::ostream &stream = std::cout);
 
     std::vector<Edge *>
-    *traversal_sub(Position v, std::vector<Edge *> *edges_visited, std::unordered_set<Position> *diamonds_gathered,
-                   int max_diamonds, int max_leaps);
+    *traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordered_set<Position> *diamondsGathered,
+                  int maxDiamonds, int maxLeaps);
 
     void traversal(int maxLeaps);
 };
@@ -259,7 +259,7 @@ Map *ReadMapFromFile(char *filename) {
 
 Map *ReadMapFromStdin();
 
-void CheckPath(Map *map, char *path_name);
+void CheckPath(Map *map, char *pathName);
 
 void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
 
@@ -296,7 +296,7 @@ Edge::~Edge() {
     delete diamonds;
 }
 
-bool Edge::is_reverse(Edge *e) const {
+bool Edge::isReverse(Edge *e) const {
     return this->to == e->from && this->from == e->to;
 }
 
@@ -345,7 +345,7 @@ bool Position::operator!=(const Position &rhs) const {
     return !(rhs == *this);
 }
 
-int Position::abs_on(Map *map) const {
+int Position::absoluteOn(Map *map) const {
     return map->width * y + x;
 }
 
@@ -387,14 +387,14 @@ Map *Map::CreateFromInputStream(std::istream &stream) {
     return new Map(height, width, maxMoves, map, shipPosition, targetScore);
 }
 
-void Map::save(const std::string &file_path) {
+void Map::save(const std::string &filePath) {
     std::ofstream output_file;
 
-    output_file.open(file_path);
+    output_file.open(filePath);
     if (output_file.is_open()) {
         output_file << height << ' ' << width << std::endl;
         output_file << maxMoves << std::endl;
-        print_to_output_stream(output_file);
+        printToOutputStream(output_file);
         output_file.close();
     } else {
         std::cerr << "Unable to open file" << std::endl;
@@ -402,7 +402,7 @@ void Map::save(const std::string &file_path) {
     }
 }
 
-void Map::print_to_output_stream(std::ostream &stream) {
+void Map::printToOutputStream(std::ostream &stream) {
     for (int i = height - 1; i >= 0; --i) {
         for (int j = 0; j < width; ++j) {
             stream << at(j, i);
@@ -411,7 +411,7 @@ void Map::print_to_output_stream(std::ostream &stream) {
     }
 }
 
-std::unordered_set<Position> *Map::get_diamonds() {
+std::unordered_set<Position> *Map::getDiamonds() {
     auto diamonds = new std::unordered_set<Position>;
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
@@ -423,17 +423,17 @@ std::unordered_set<Position> *Map::get_diamonds() {
     return diamonds;
 }
 
-Position Map::rel_position(int pos) {
+Position Map::relativePosition(int pos) {
     return {pos % width, pos / width};
 }
 
-std::vector<Position> *Map::traverse(char *string_path) {
+std::vector<Position> *Map::traverse(char *stringPath) {
     auto path = new std::vector<Position>();
     Position current = this->shipInitialPosition;
-    for (int i = 0; string_path[i] != '\0'; ++i) {
-        if (string_path[i] < 48 || string_path[i] > 57)
+    for (int i = 0; stringPath[i] != '\0'; ++i) {
+        if (stringPath[i] < 48 || stringPath[i] > 57)
             throw "Wrong path";
-        MoveData md = this->move(current, string_path[i] - 48);
+        MoveData md = this->move(current, stringPath[i] - 48);
         delete md.diamondsGathered;
         if (md.finalPosition == current)
             return path;
@@ -478,7 +478,7 @@ void Map::print() {
     printf("m: %d t: %d\n", maxMoves, targetScore);
     printf("s: (%d, %d)\n", shipInitialPosition.x, shipInitialPosition.y);
 
-    print_to_output_stream(std::cout);
+    printToOutputStream(std::cout);
 }
 
 const char Map::at(Position position) {
@@ -522,9 +522,9 @@ Map::~Map() {
 //region GRAPH IMPLEMENTATION
 
 void Graph::traversal(int maxLeaps) {
-    auto result = traversal_sub(map->shipInitialPosition, new std::vector<Edge *>(),
-                                new std::unordered_set<Position>(),
-                                diamonds->size(), maxLeaps);
+    auto result = traversalSub(map->shipInitialPosition, new std::vector<Edge *>(),
+                               new std::unordered_set<Position>(),
+                               diamonds->size(), maxLeaps);
     if (result->empty()) {
         std::cout << ("BRAK");
         delete result;
@@ -532,12 +532,12 @@ void Graph::traversal(int maxLeaps) {
         PrintPathNumbers(*result);
         if (DebugMode) {
             std::cout << std::endl;
-            this->print_dot_path(result);
+            this->printDotPath(result);
 
             std::ofstream output_dot_file;
             output_dot_file.open("sol.dot");
             if (output_dot_file.is_open()) {
-                this->print_dot_path(result, output_dot_file);
+                this->printDotPath(result, output_dot_file);
                 output_dot_file.close();
             } else {
                 std::cerr << "Unable to open dot output file" << std::endl;
@@ -559,49 +559,49 @@ void Graph::traversal(int maxLeaps) {
 }
 
 std::vector<Edge *> *
-Graph::traversal_sub(Position v, std::vector<Edge *> *edges_visited, std::unordered_set<Position> *diamonds_gathered,
-                     int max_diamonds, int max_leaps) {
-    if (diamonds_gathered->size() > max_diamonds) throw "Too much diamonds";
-    if (edges_visited->size() > max_leaps) throw "Too much leaps";
-    if (vertices->count(v.abs_on(map)) == 0) throw "Encountered a non existing vertex";
+Graph::traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordered_set<Position> *diamondsGathered,
+                    int maxDiamonds, int maxLeaps) {
+    if (diamondsGathered->size() > maxDiamonds) throw "Too much diamonds";
+    if (edgesVisited->size() > maxLeaps) throw "Too much leaps";
+    if (vertices->count(v.absoluteOn(map)) == 0) throw "Encountered a non existing vertex";
 
     if (DebugMode) {
         Stats.iterations++;
     }
 
-    if (diamonds_gathered->size() == max_diamonds) {
-        delete diamonds_gathered;
-        return edges_visited;
+    if (diamondsGathered->size() == maxDiamonds) {
+        delete diamondsGathered;
+        return edgesVisited;
     }
 
-    if (edges_visited->size() == max_leaps) {
+    if (edgesVisited->size() == maxLeaps) {
         if (DebugMode) {
             Stats.gu_leap_limit++;
         }
-        delete edges_visited;
-        delete diamonds_gathered;
+        delete edgesVisited;
+        delete diamondsGathered;
         return new std::vector<Edge *>();
     }
 
-    for (auto kv : vertices->at(v.abs_on(map))->edges) {
-        if (std::all_of(edges_visited->begin(), edges_visited->end(),
+    for (auto kv : vertices->at(v.absoluteOn(map))->edges) {
+        if (std::all_of(edgesVisited->begin(), edgesVisited->end(),
                         [e = kv.second](Edge *x) { return *x != *e; })) {
-            auto new_edges_visited = new std::vector<Edge *>(*edges_visited);
+            auto new_edges_visited = new std::vector<Edge *>(*edgesVisited);
             new_edges_visited->push_back(kv.second);
 
-            auto new_diamonds_gathered = new std::unordered_set<Position>(*diamonds_gathered);
+            auto new_diamonds_gathered = new std::unordered_set<Position>(*diamondsGathered);
             for (Position diax : *(kv.second->diamonds)) {
                 new_diamonds_gathered->insert(diax);
             }
 
-            auto result = traversal_sub(kv.second->to, new_edges_visited, new_diamonds_gathered, max_diamonds,
-                                        max_leaps);
+            auto result = traversalSub(kv.second->to, new_edges_visited, new_diamonds_gathered, maxDiamonds,
+                                       maxLeaps);
 
             if (result->empty()) {
                 delete result;
             } else {
-                delete diamonds_gathered;
-                delete edges_visited;
+                delete diamondsGathered;
+                delete edgesVisited;
                 return result;
             }
         }
@@ -611,17 +611,17 @@ Graph::traversal_sub(Position v, std::vector<Edge *> *edges_visited, std::unorde
         Stats.gu_no_path++;
     }
 
-    delete diamonds_gathered;
-    delete edges_visited;
+    delete diamondsGathered;
+    delete edgesVisited;
     return new std::vector<Edge *>();
 }
 
-void Graph::print_dot_path(std::vector<Edge *> *edges, std::ostream &stream) {
+void Graph::printDotPath(std::vector<Edge *> *edges, std::ostream &stream) {
     stream << "digraph diaminy {" << std::endl;
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
     for (auto vkv : *vertices) {
-        Position position = map->rel_position(vkv.first);
+        Position position = map->relativePosition(vkv.first);
         for (auto ekv: vkv.second->edges) {
             bool is_path = std::any_of(edges->begin(), edges->end(),
                                        [e = ekv.second](Edge *x) { return *x == *e; });
@@ -638,12 +638,12 @@ void Graph::print_dot_path(std::vector<Edge *> *edges, std::ostream &stream) {
     stream << "}" << std::endl;
 }
 
-void Graph::save(const std::string &file_path) {
+void Graph::save(const std::string &filePath) {
     std::ofstream output_file;
 
-    output_file.open(file_path);
+    output_file.open(filePath);
     if (output_file.is_open()) {
-        print_dot(output_file);
+        printDot(output_file);
         output_file.close();
     } else {
         std::cerr << "Unable to open file" << std::endl;
@@ -651,12 +651,12 @@ void Graph::save(const std::string &file_path) {
     }
 }
 
-void Graph::print_dot(std::ostream &stream) {
+void Graph::printDot(std::ostream &stream) {
     stream << "digraph diaminy {" << std::endl;
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
     for (auto vkv : *vertices) {
-        Position position = map->rel_position(vkv.first);
+        Position position = map->relativePosition(vkv.first);
         for (auto ekv: vkv.second->edges) {
             stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << ekv.second->to.x << ","
                    << ekv.second->to.y << ")\" [label=" << ekv.second->diamonds->size() << "];" << std::endl;
@@ -667,11 +667,11 @@ void Graph::print_dot(std::ostream &stream) {
     stream << "}" << std::endl;
 }
 
-void Graph::print_visited_map(std::ostream &stream) {
+void Graph::printVisitedMap(std::ostream &stream) {
     for (int i = map->height - 1; i >= 0; --i) {
         for (int j = 0; j < map->width; ++j) {
             auto pos = Position(j, i);
-            if (vertices->count(pos.abs_on(map)) == 0) {
+            if (vertices->count(pos.absoluteOn(map)) == 0) {
                 stream << map->at(pos);
             } else {
                 stream << 'X';
@@ -683,7 +683,7 @@ void Graph::print_visited_map(std::ostream &stream) {
 
 void Graph::print() {
     for (auto vkv : *vertices) {
-        Position position = map->rel_position(vkv.first);
+        Position position = map->relativePosition(vkv.first);
         printf("(%d,%d): ", position.x, position.y);
         for (auto ekv : vkv.second->edges) {
             printf("{(%d,%d), %d, %d} ", ekv.second->to.x, ekv.second->to.y, ekv.second->diamonds->size(),
@@ -695,15 +695,15 @@ void Graph::print() {
 
 Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's constructor
     auto vertices = new std::map<int, Vertex *>();
-    auto diamonds = map->get_diamonds();
+    auto diamonds = map->getDiamonds();
 
     std::queue<Position> positions;
     positions.push(map->shipInitialPosition);
-    vertices->insert(std::pair<int, Vertex *>(map->shipInitialPosition.abs_on(map), new Vertex()));
+    vertices->insert(std::pair<int, Vertex *>(map->shipInitialPosition.absoluteOn(map), new Vertex()));
     while (!positions.empty()) {
         Position currentPosition = positions.front();
         positions.pop();
-        int current_abs_position = currentPosition.abs_on(map);
+        int current_abs_position = currentPosition.absoluteOn(map);
 
         Vertex *&currentVertex = vertices->at(current_abs_position);
         if (currentVertex == nullptr) {
@@ -714,14 +714,14 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
             if (md.finalPosition != currentPosition) {
                 Edge *e = new Edge(md.diamondsGathered, d, currentPosition, md.finalPosition);
                 currentVertex->edges.insert(std::pair<Direction, Edge *>((Direction) d, e));
-                currentVertex->out_deg++;
+                currentVertex->outDeg++;
 
-                int final_abs_position = md.finalPosition.abs_on(map);
+                int final_abs_position = md.finalPosition.absoluteOn(map);
                 if (vertices->count(final_abs_position) == 0) {
                     vertices->insert(std::pair<int, Vertex *>(final_abs_position, new Vertex()));
                     positions.push(md.finalPosition);
                 }
-                vertices->at(final_abs_position)->in_deg++;
+                vertices->at(final_abs_position)->inDeg++;
             }
         }
     }
@@ -752,8 +752,8 @@ void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream) {
     }
 }
 
-void CheckPath(Map *map, char *path_name) {
-    auto path = map->traverse(path_name);
+void CheckPath(Map *map, char *pathName) {
+    auto path = map->traverse(pathName);
     std::ofstream output_path_file;
     output_path_file.open("path.txt");
     if (output_path_file.is_open()) {
@@ -772,12 +772,12 @@ void CheckPath(Map *map, char *path_name) {
 void Solve(Map *map) {
     Graph *graph = Graph::Generate(map);
     if (DebugMode) {
-        graph->print_dot();
+        graph->printDot();
         graph->save("graph.dot");
         Stats.non_empty_nodes = graph->vertices->size();
         Stats.diamonds = graph->diamonds->size();
         for (const auto &kv : *graph->vertices) {
-            Stats.edges += kv.second->out_deg;
+            Stats.edges += kv.second->outDeg;
         }
     }
 
