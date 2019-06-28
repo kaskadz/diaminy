@@ -95,6 +95,22 @@ enum Direction : int {
 
 //endregion
 
+//region DATA TYPES
+
+class Map;
+
+class Position;
+
+class Edge;
+
+class Vertex;
+
+class Graph;
+
+struct MoveData;
+
+//endregion
+
 //region DATA STRUCTURES
 
 class Position {
