@@ -196,6 +196,26 @@ public:
     bool operator!=(const Edge &rhs) const;
 };
 
+//region HASHING FUNCTIONS
+
+namespace std {
+    template<>
+    struct hash<Position> {
+        size_t operator()(const Position &pt) const {
+            return ((hash<int>()(pt.x) ^ (hash<int>()(pt.y) << 1)) >> 1);
+        }
+    };
+
+    template<>
+    struct hash<Edge> {
+        size_t operator()(const Edge &e) const {
+            return ((hash<Position>()(e.from) ^ (hash<Position>()(e.to) << 1)) >> 1);
+        }
+    };
+}
+
+//endregion
+
 class Vertex {
 public:
     std::map<Direction, Edge *> edges{};
@@ -209,15 +229,12 @@ class Graph {
 private:
     Map *map;
 public:
-    std::unordered_set<Position> *diamonds;
-    std::map<Position, Vertex *> *vertices;
-
-private:
-    explicit Graph(std::map<Position, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds);
+    std::unordered_set<Position> diamonds{};
+    std::map<Position, Vertex *> vertices;
 
 public:
 
-    static Graph *Generate(Map *map);
+    explicit Graph(Map *map);
 
     ~Graph();
 
@@ -266,26 +283,6 @@ void CheckPath(Map *map, char *pathName);
 void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream = std::cout);
 
 void Solve(Map *map);
-
-//endregion
-
-//region HASHING FUNCTIONS
-
-namespace std {
-    template<>
-    struct hash<Position> {
-        size_t operator()(const Position &pt) const {
-            return ((hash<int>()(pt.x) ^ (hash<int>()(pt.y) << 1)) >> 1);
-        }
-    };
-
-    template<>
-    struct hash<Edge> {
-        size_t operator()(const Edge &e) const {
-            return ((hash<Position>()(e.from) ^ (hash<Position>()(e.to) << 1)) >> 1);
-        }
-    };
-}
 
 //endregion
 
@@ -532,7 +529,7 @@ Map::~Map() {
 void Graph::traversal(int maxLeaps) {
     auto result = traversalSub(map->shipInitialPosition, new std::vector<Edge *>(),
                                new std::unordered_set<Position>(),
-                               diamonds->size(), maxLeaps);
+                               diamonds.size(), maxLeaps);
     if (result->empty()) {
         std::cout << ("BRAK");
         delete result;
@@ -571,7 +568,7 @@ Graph::traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordere
                     int maxDiamonds, int maxLeaps) {
     if (diamondsGathered->size() > maxDiamonds) throw "Too much diamonds";
     if (edgesVisited->size() > maxLeaps) throw "Too much leaps";
-    if (vertices->count(v) == 0) throw "Encountered a non existing vertex";
+    if (vertices.count(v) == 0) throw "Encountered a non existing vertex";
 
     if (DebugMode) {
         Stats.iterations++;
@@ -591,7 +588,7 @@ Graph::traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordere
         return new std::vector<Edge *>();
     }
 
-    for (auto kv : vertices->at(v)->edges) {
+    for (auto kv : vertices.at(v)->edges) {
 //        if (std::all_of(edgesVisited->begin(), edgesVisited->end(),
 //                        [e = kv.second](Edge *x) { return *x != *e; })) {
         auto new_edges_visited = new std::vector<Edge *>(*edgesVisited);
@@ -628,7 +625,7 @@ void Graph::printDotPath(std::vector<Edge *> *edges, std::ostream &stream) {
     stream << "digraph diaminy {" << std::endl;
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
-    for (auto vkv : *vertices) {
+    for (auto vkv : vertices) {
         Position position = vkv.first;
         for (auto ekv: vkv.second->edges) {
             bool is_path = std::any_of(edges->begin(), edges->end(),
@@ -663,7 +660,7 @@ void Graph::printDot(std::ostream &stream) {
     stream << "digraph diaminy {" << std::endl;
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
-    for (auto vkv : *vertices) {
+    for (auto vkv : vertices) {
         Position position = vkv.first;
         for (auto ekv: vkv.second->edges) {
             stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << ekv.second->to.x << ","
@@ -679,7 +676,7 @@ void Graph::printVisitedMap(std::ostream &stream) {
     for (int i = map->height - 1; i >= 0; --i) {
         for (int j = 0; j < map->width; ++j) {
             auto pos = Position(j, i);
-            if (vertices->count(pos) == 0) {
+            if (vertices.count(pos) == 0) {
                 stream << map->at(pos);
             } else {
                 stream << 'X';
@@ -690,7 +687,7 @@ void Graph::printVisitedMap(std::ostream &stream) {
 }
 
 void Graph::print() {
-    for (auto vkv : *vertices) {
+    for (auto vkv : vertices) {
         Position position = vkv.first;
         printf("(%d,%d): ", position.x, position.y);
         for (auto ekv : vkv.second->edges) {
@@ -701,18 +698,21 @@ void Graph::print() {
     }
 }
 
-Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's constructor
-    auto vertices = new std::map<Position, Vertex *>();
-    auto diamonds = map->getDiamonds();
+Graph::Graph(Map *map) {
+    this->map = map;
+
+    std::unordered_set<Position> *dia;
+    dia = map->getDiamonds();
+    diamonds.insert(dia->begin(), dia->end());
 
     std::queue<Position> positions;
     positions.push(map->shipInitialPosition);
-    vertices->insert(std::pair<Position, Vertex *>(map->shipInitialPosition, new Vertex()));
+    vertices.insert(std::pair<Position, Vertex *>(map->shipInitialPosition, new Vertex()));
     while (!positions.empty()) {
         Position currentPosition = positions.front();
         positions.pop();
 
-        Vertex *&currentVertex = vertices->at(currentPosition);
+        Vertex *&currentVertex = vertices.at(currentPosition);
         if (currentVertex == nullptr) {
             throw "Some vertex was not initialized!";
         }
@@ -723,29 +723,22 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
                 currentVertex->edges.insert(std::pair<Direction, Edge *>((Direction) d, e));
                 currentVertex->outDeg++;
 
-                if (vertices->count(md.finalPosition) == 0) {
-                    vertices->insert(std::pair<Position, Vertex *>(md.finalPosition, new Vertex()));
+                if (vertices.count(md.finalPosition) == 0) {
+                    vertices.insert(std::pair<Position, Vertex *>(md.finalPosition, new Vertex()));
                     positions.push(md.finalPosition);
                 }
-                vertices->at(md.finalPosition)->inDeg++;
+                vertices.at(md.finalPosition)->inDeg++;
             }
         }
     }
-
-    return new Graph(vertices, map, diamonds);
-}
-
-Graph::Graph(std::map<Position, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds)
-        : vertices(vertices), map(map), diamonds(diamonds) {
 }
 
 Graph::~Graph() {
-    for (const auto &kv : *vertices) {
+    for (const auto &kv : vertices) {
         for (auto ekv : kv.second->edges) {
             delete ekv.second;
         }
     }
-    delete vertices;
 }
 
 //endregion
@@ -760,13 +753,13 @@ void PrintPathNumbers(std::vector<Edge *> &edges, std::ostream &stream) {
 
 void CheckPath(Map *map, char *pathName) {
     auto path = map->traverse(pathName);
-    std::ofstream output_path_file; // TODO: Choose naming convention for local variables: `snake_case` or `javaCase`
-    output_path_file.open("path.txt");
-    if (output_path_file.is_open()) {
+    std::ofstream outputPathFile;
+    outputPathFile.open("path.txt");
+    if (outputPathFile.is_open()) {
         for (Position p : *path) {
-            output_path_file << p.x << "," << p.y << std::endl;
+            outputPathFile << p.x << "," << p.y << std::endl;
         }
-        output_path_file.close();
+        outputPathFile.close();
     } else {
         std::cerr << "Unable to open path file" << std::endl;
         std::cerr << strerror(errno) << std::endl;
@@ -774,15 +767,14 @@ void CheckPath(Map *map, char *pathName) {
     delete path;
 }
 
-
 void Solve(Map *map) {
-    Graph *graph = Graph::Generate(map);
+    auto *graph = new Graph(map);
     if (DebugMode) {
         graph->printDot();
         graph->save("graph.dot");
-        Stats.non_empty_nodes = graph->vertices->size();
-        Stats.diamonds = graph->diamonds->size();
-        for (const auto &kv : *graph->vertices) {
+        Stats.non_empty_nodes = graph->vertices.size();
+        Stats.diamonds = graph->diamonds.size();
+        for (const auto &kv : graph->vertices) {
             Stats.edges += kv.second->outDeg;
         }
     }
