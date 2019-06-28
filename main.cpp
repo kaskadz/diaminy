@@ -13,6 +13,8 @@
 #include <unordered_set>
 #include <bits/unordered_set.h>
 #include <map>
+#include <chrono>
+#include <random>
 
 //region GLOBAL VARIABLES
 
@@ -92,6 +94,25 @@ enum Direction : int {
     W,
     NW
 };
+
+static const std::array<Direction, 8> All = {N, NE, E, SE, SW, W, NW, S};
+static const std::array<Direction, 8> AllSLast = {N, NE, E, SE, SW, W, NW, S};
+static const std::array<Direction, 7> AllButS = {N, NE, E, SE, SW, W, NW};
+
+static std::array<Direction, 8> AllShuffled = {N, NE, E, SE, SW, W, NW, S};
+static std::array<Direction, 7> AllButSShuffled = {N, NE, E, SE, SW, W, NW};
+
+void ShuffleAllDirections() {
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+    shuffle(AllShuffled.begin(), AllShuffled.end(), std::default_random_engine(seed));
+}
+
+void ShuffleAllButSDirections() {
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+    shuffle(AllButSShuffled.begin(), AllButSShuffled.end(), std::default_random_engine(seed));
+}
 
 //endregion
 
