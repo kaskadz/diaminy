@@ -1,5 +1,6 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "hicpp-exception-baseclass"
+
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -11,6 +12,7 @@
 #include <deque>
 #include <unordered_set>
 #include <bits/unordered_set.h>
+#include <map>
 
 bool DebugMode;
 
@@ -397,22 +399,22 @@ private:
 public:
     int const size;
     std::unordered_set<Position> *diamonds;
-    std::vector<Vertex *> *vertices;
+    std::map<int, Vertex *> *vertices;
 
 private:
-    explicit Graph(std::vector<Vertex *> *vertices, int size, Map *map, std::unordered_set<Position> *diamonds)
+    explicit Graph(std::map<int, Vertex *> *vertices, int size, Map *map, std::unordered_set<Position> *diamonds)
             : vertices(vertices), size(size), map(map), diamonds(diamonds) {
     }
 
 public:
 
     static Graph *Generate(Map *map) {
-        auto vertices = new std::vector<Vertex *>(map->abs_positions());
+        auto vertices = new std::map<int, Vertex *>();
         auto diamonds = map->get_diamonds();
 
         std::queue<Position> positions;
         positions.push(map->shipInitialPosition);
-        vertices->at(map->abs_position(map->shipInitialPosition)) = new Vertex();
+        vertices->insert(std::pair<int, Vertex *>(map->abs_position(map->shipInitialPosition), new Vertex()));
         while (!positions.empty()) {
             Position currentPosition = positions.front();
             positions.pop();
@@ -431,8 +433,8 @@ public:
                     currentVertex->out_deg++;
 
                     int final_abs_position = map->abs_position(md.finalPosition);
-                    if (vertices->at(final_abs_position) == nullptr) {
-                        vertices->at(final_abs_position) = new Vertex();
+                    if (vertices->count(final_abs_position) == 0) {
+                        vertices->insert(std::pair<int, Vertex *>(final_abs_position, new Vertex()));
                         positions.push(md.finalPosition);
                     }
                     vertices->at(final_abs_position)->in_deg++;
@@ -444,11 +446,9 @@ public:
     }
 
     ~Graph() {
-        for (const auto &v : *vertices) {
-            if (v != nullptr) {
-                for (Edge *e : v->edges) {
-                    delete e;
-                }
+        for (const auto &kv : *vertices) {
+            for (Edge *e : kv.second->edges) {
+                delete e;
             }
         }
         delete vertices;
@@ -456,7 +456,7 @@ public:
 
     void print() {
         for (int i = 0; i < size; ++i) {
-            if (vertices->at(i) != nullptr) {
+            if (vertices->count(i) > 0) {
                 Position position = map->rel_position(i);
                 printf("(%d,%d): ", position.x, position.y);
                 for (Edge *e : vertices->at(i)->edges) {
@@ -471,7 +471,7 @@ public:
         for (int i = map->height - 1; i >= 0; --i) {
             for (int j = 0; j < map->width; ++j) {
                 auto pos = Position(j, i);
-                if (vertices->at(map->abs_position(pos)) == nullptr) {
+                if (vertices->count(map->abs_position(pos)) == 0) {
                     stream << map->at(pos);
                 } else {
                     stream << 'X';
@@ -486,7 +486,7 @@ public:
         stream << "\trankdir=TOP" << std::endl;
         stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
-            if (vertices->at(i) != nullptr) {
+            if (vertices->count(i) > 0) {
                 Position position = map->rel_position(i);
                 for (Edge *e: vertices->at(i)->edges) {
                     stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << e->to.x << ","
@@ -517,7 +517,7 @@ public:
         stream << "\trankdir=TOP" << std::endl;
         stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
         for (int i = 0; i < size; ++i) {
-            if (vertices->at(i) != nullptr) {
+            if (vertices->count(i) > 0) {
                 Position position = map->rel_position(i);
                 for (Edge *e: vertices->at(i)->edges) {
                     bool is_path = std::any_of(edges->begin(), edges->end(), [e](Edge *x) { return *x == *e; });
@@ -540,7 +540,7 @@ public:
                    int max_diamonds, int max_leaps) {
         if (diamonds_gathered->size() > max_diamonds) throw "Too much diamonds";
         if (edges_visited->size() > max_leaps) throw "Too much leaps";
-        if (vertices->at(map->abs_position(v)) == nullptr) throw "Encountered a null vertex";
+        if (vertices->count(map->abs_position(v)) == 0) throw "Encountered a non existing vertex";
 
         if (DebugMode) {
             Stats.iterations++;
@@ -660,10 +660,8 @@ void Solve(Map *map) {
 //        Stats.non_empty_nodes = std::count_if(graph->vertices->begin(), graph->vertices->end(),
 //                                              [](std::vector<Edge *> v) { return !v.empty(); });
         Stats.diamonds = graph->diamonds->size();
-        for (const auto &v : *graph->vertices) {
-            if (v != nullptr) {
-                Stats.edges += v->out_deg;
-            }
+        for (const auto &kv : *graph->vertices) {
+            Stats.edges += kv.second->out_deg;
         }
     }
 
