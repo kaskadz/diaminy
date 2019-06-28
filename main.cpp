@@ -170,8 +170,6 @@ public:
 
     std::vector<Position> *traverse(char *string_path);
 
-    int abs_position(Position position);
-
     int abs_positions();
 
     Position rel_position(int pos);
@@ -435,10 +433,6 @@ std::unordered_set<Position> *Map::get_diamonds() {
 
 Position Map::rel_position(int pos) {
     return {pos % width, pos / width};
-}
-
-int Map::abs_position(Position position) { // TODO: Implement this one as Position's member
-    return width * position.y + position.x;
 }
 
 int Map::abs_positions() {
