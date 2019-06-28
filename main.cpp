@@ -127,6 +127,8 @@ public:
     bool operator==(const Position &rhs) const;
 
     bool operator!=(const Position &rhs) const;
+
+    bool operator<(const Position &rhs) const;
 };
 
 struct MoveData {
@@ -208,10 +210,10 @@ private:
     Map *map;
 public:
     std::unordered_set<Position> *diamonds;
-    std::map<int, Vertex *> *vertices;
+    std::map<Position, Vertex *> *vertices;
 
 private:
-    explicit Graph(std::map<int, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds);
+    explicit Graph(std::map<Position, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds);
 
 public:
 
@@ -347,6 +349,12 @@ bool Position::operator!=(const Position &rhs) const {
 
 int Position::absoluteOn(Map *map) const {
     return map->width * y + x;
+}
+
+bool Position::operator<(const Position &rhs) const {
+    if (y < rhs.y) return true;
+    if (y == rhs.y) return x < rhs.x;
+    return false;
 }
 
 //endregion
@@ -563,7 +571,7 @@ Graph::traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordere
                     int maxDiamonds, int maxLeaps) {
     if (diamondsGathered->size() > maxDiamonds) throw "Too much diamonds";
     if (edgesVisited->size() > maxLeaps) throw "Too much leaps";
-    if (vertices->count(v.absoluteOn(map)) == 0) throw "Encountered a non existing vertex";
+    if (vertices->count(v) == 0) throw "Encountered a non existing vertex";
 
     if (DebugMode) {
         Stats.iterations++;
@@ -583,7 +591,7 @@ Graph::traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordere
         return new std::vector<Edge *>();
     }
 
-    for (auto kv : vertices->at(v.absoluteOn(map))->edges) {
+    for (auto kv : vertices->at(v)->edges) {
 //        if (std::all_of(edgesVisited->begin(), edgesVisited->end(),
 //                        [e = kv.second](Edge *x) { return *x != *e; })) {
         auto new_edges_visited = new std::vector<Edge *>(*edgesVisited);
@@ -621,7 +629,7 @@ void Graph::printDotPath(std::vector<Edge *> *edges, std::ostream &stream) {
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
     for (auto vkv : *vertices) {
-        Position position = map->relativePosition(vkv.first);
+        Position position = vkv.first;
         for (auto ekv: vkv.second->edges) {
             bool is_path = std::any_of(edges->begin(), edges->end(),
                                        [e = ekv.second](Edge *x) { return *x == *e; });
@@ -656,7 +664,7 @@ void Graph::printDot(std::ostream &stream) {
     stream << "\trankdir=TOP" << std::endl;
     stream << "\tnode [style=filled, shape=circle, color=lightgreen];" << std::endl;
     for (auto vkv : *vertices) {
-        Position position = map->relativePosition(vkv.first);
+        Position position = vkv.first;
         for (auto ekv: vkv.second->edges) {
             stream << "\t\"(" << position.x << "," << position.y << ")\" -> \"(" << ekv.second->to.x << ","
                    << ekv.second->to.y << ")\" [label=" << ekv.second->diamonds->size() << "];" << std::endl;
@@ -671,7 +679,7 @@ void Graph::printVisitedMap(std::ostream &stream) {
     for (int i = map->height - 1; i >= 0; --i) {
         for (int j = 0; j < map->width; ++j) {
             auto pos = Position(j, i);
-            if (vertices->count(pos.absoluteOn(map)) == 0) {
+            if (vertices->count(pos) == 0) {
                 stream << map->at(pos);
             } else {
                 stream << 'X';
@@ -683,7 +691,7 @@ void Graph::printVisitedMap(std::ostream &stream) {
 
 void Graph::print() {
     for (auto vkv : *vertices) {
-        Position position = map->relativePosition(vkv.first);
+        Position position = vkv.first;
         printf("(%d,%d): ", position.x, position.y);
         for (auto ekv : vkv.second->edges) {
             printf("{(%d,%d), %d, %d} ", ekv.second->to.x, ekv.second->to.y, ekv.second->diamonds->size(),
@@ -694,18 +702,17 @@ void Graph::print() {
 }
 
 Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's constructor
-    auto vertices = new std::map<int, Vertex *>();
+    auto vertices = new std::map<Position, Vertex *>();
     auto diamonds = map->getDiamonds();
 
     std::queue<Position> positions;
     positions.push(map->shipInitialPosition);
-    vertices->insert(std::pair<int, Vertex *>(map->shipInitialPosition.absoluteOn(map), new Vertex()));
+    vertices->insert(std::pair<Position, Vertex *>(map->shipInitialPosition, new Vertex()));
     while (!positions.empty()) {
         Position currentPosition = positions.front();
         positions.pop();
-        int current_abs_position = currentPosition.absoluteOn(map);
 
-        Vertex *&currentVertex = vertices->at(current_abs_position);
+        Vertex *&currentVertex = vertices->at(currentPosition);
         if (currentVertex == nullptr) {
             throw "Some vertex was not initialized!";
         }
@@ -716,12 +723,11 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
                 currentVertex->edges.insert(std::pair<Direction, Edge *>((Direction) d, e));
                 currentVertex->outDeg++;
 
-                int final_abs_position = md.finalPosition.absoluteOn(map);
-                if (vertices->count(final_abs_position) == 0) {
-                    vertices->insert(std::pair<int, Vertex *>(final_abs_position, new Vertex()));
+                if (vertices->count(md.finalPosition) == 0) {
+                    vertices->insert(std::pair<Position, Vertex *>(md.finalPosition, new Vertex()));
                     positions.push(md.finalPosition);
                 }
-                vertices->at(final_abs_position)->inDeg++;
+                vertices->at(md.finalPosition)->inDeg++;
             }
         }
     }
@@ -729,7 +735,7 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
     return new Graph(vertices, map, diamonds);
 }
 
-Graph::Graph(std::map<int, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds)
+Graph::Graph(std::map<Position, Vertex *> *vertices, Map *map, std::unordered_set<Position> *diamonds)
         : vertices(vertices), map(map), diamonds(diamonds) {
 }
 
