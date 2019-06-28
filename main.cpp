@@ -122,6 +122,8 @@ public:
 
     Position move(Direction direction);
 
+    int abs_on(Map *map) const;
+
     bool operator==(const Position &rhs) const;
 
     bool operator!=(const Position &rhs) const;
@@ -353,6 +355,10 @@ bool Position::operator!=(const Position &rhs) const {
     return !(rhs == *this);
 }
 
+int Position::abs_on(Map *map) const {
+    return map->width * y + x;
+}
+
 //endregion
 
 //region MAP IMPLEMENTATION
@@ -568,7 +574,7 @@ Graph::traversal_sub(Position v, std::vector<Edge *> *edges_visited, std::unorde
                      int max_diamonds, int max_leaps) {
     if (diamonds_gathered->size() > max_diamonds) throw "Too much diamonds";
     if (edges_visited->size() > max_leaps) throw "Too much leaps";
-    if (vertices->count(map->abs_position(v)) == 0) throw "Encountered a non existing vertex";
+    if (vertices->count(v.abs_on(map)) == 0) throw "Encountered a non existing vertex";
 
     if (DebugMode) {
         Stats.iterations++;
@@ -588,7 +594,7 @@ Graph::traversal_sub(Position v, std::vector<Edge *> *edges_visited, std::unorde
         return new std::vector<Edge *>();
     }
 
-    for (auto kv : vertices->at(map->abs_position(v))->edges) {
+    for (auto kv : vertices->at(v.abs_on(map))->edges) {
         if (std::all_of(edges_visited->begin(), edges_visited->end(),
                         [e = kv.second](Edge *x) { return *x != *e; })) {
             auto new_edges_visited = new std::vector<Edge *>(*edges_visited);
@@ -680,7 +686,7 @@ void Graph::print_visited_map(std::ostream &stream) {
     for (int i = map->height - 1; i >= 0; --i) {
         for (int j = 0; j < map->width; ++j) {
             auto pos = Position(j, i);
-            if (vertices->count(map->abs_position(pos)) == 0) {
+            if (vertices->count(pos.abs_on(map)) == 0) {
                 stream << map->at(pos);
             } else {
                 stream << 'X';
@@ -710,11 +716,11 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
 
     std::queue<Position> positions;
     positions.push(map->shipInitialPosition);
-    vertices->insert(std::pair<int, Vertex *>(map->abs_position(map->shipInitialPosition), new Vertex()));
+    vertices->insert(std::pair<int, Vertex *>(map->shipInitialPosition.abs_on(map), new Vertex()));
     while (!positions.empty()) {
         Position currentPosition = positions.front();
         positions.pop();
-        int current_abs_position = map->abs_position(currentPosition);
+        int current_abs_position = currentPosition.abs_on(map);
 
         Vertex *&currentVertex = vertices->at(current_abs_position);
         if (currentVertex == nullptr) {
@@ -727,7 +733,7 @@ Graph *Graph::Generate(Map *map) { // TODO: Move generation to Graph's construct
                 currentVertex->edges.insert(std::pair<Direction, Edge *>((Direction) d, e));
                 currentVertex->out_deg++;
 
-                int final_abs_position = map->abs_position(md.finalPosition);
+                int final_abs_position = md.finalPosition.abs_on(map);
                 if (vertices->count(final_abs_position) == 0) {
                     vertices->insert(std::pair<int, Vertex *>(final_abs_position, new Vertex()));
                     positions.push(md.finalPosition);
