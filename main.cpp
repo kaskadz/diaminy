@@ -656,8 +656,7 @@ void Solve(Map *map) {
     if (DebugMode) {
         graph->print_dot();
         graph->save("graph.dot");
-//        Stats.non_empty_nodes = std::count_if(graph->vertices->begin(), graph->vertices->end(),
-//                                              [](std::vector<Edge *> v) { return !v.empty(); });
+        Stats.non_empty_nodes = graph->vertices->size();
         Stats.diamonds = graph->diamonds->size();
         for (const auto &kv : *graph->vertices) {
             Stats.edges += kv.second->out_deg;
