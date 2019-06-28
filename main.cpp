@@ -584,27 +584,27 @@ Graph::traversalSub(Position v, std::vector<Edge *> *edgesVisited, std::unordere
     }
 
     for (auto kv : vertices->at(v.absoluteOn(map))->edges) {
-        if (std::all_of(edgesVisited->begin(), edgesVisited->end(),
-                        [e = kv.second](Edge *x) { return *x != *e; })) {
-            auto new_edges_visited = new std::vector<Edge *>(*edgesVisited);
-            new_edges_visited->push_back(kv.second);
+//        if (std::all_of(edgesVisited->begin(), edgesVisited->end(),
+//                        [e = kv.second](Edge *x) { return *x != *e; })) {
+        auto new_edges_visited = new std::vector<Edge *>(*edgesVisited);
+        new_edges_visited->push_back(kv.second);
 
-            auto new_diamonds_gathered = new std::unordered_set<Position>(*diamondsGathered);
-            for (Position diax : *(kv.second->diamonds)) {
-                new_diamonds_gathered->insert(diax);
-            }
-
-            auto result = traversalSub(kv.second->to, new_edges_visited, new_diamonds_gathered, maxDiamonds,
-                                       maxLeaps);
-
-            if (result->empty()) {
-                delete result;
-            } else {
-                delete diamondsGathered;
-                delete edgesVisited;
-                return result;
-            }
+        auto new_diamonds_gathered = new std::unordered_set<Position>(*diamondsGathered);
+        for (Position diax : *(kv.second->diamonds)) {
+            new_diamonds_gathered->insert(diax);
         }
+
+        auto result = traversalSub(kv.second->to, new_edges_visited, new_diamonds_gathered, maxDiamonds,
+                                   maxLeaps);
+
+        if (result->empty()) {
+            delete result;
+        } else {
+            delete diamondsGathered;
+            delete edgesVisited;
+            return result;
+        }
+//        }
     }
 
     if (DebugMode) {
