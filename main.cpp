@@ -143,8 +143,6 @@ public:
 
     Position move(Direction direction);
 
-    int absoluteOn(Map *map) const;
-
     bool operator==(const Position &rhs) const;
 
     bool operator!=(const Position &rhs) const;
@@ -161,7 +159,7 @@ class Map {
 private:
     char **map; // TODO: Linearise this array
 
-    Map(int height, int width, int maxMoves, char **map, Position shipPosition, int targetScore);
+    Map(int height, int width, int maxMoves, char **map, Position shipPosition, int allDiamonds);
 
     void set(Position position, Entity e);
 
@@ -171,10 +169,10 @@ public:
     int const height;
     int const width;
     int const maxMoves;
-    int const targetScore;
-    const Position shipInitialPosition;
+    int const allDiamonds;
+    const Position initialPosition;
 
-    ~Map();;
+    ~Map();
 
     const char at(int x, int y);
 
@@ -187,8 +185,6 @@ public:
     MoveData move(Position initial, int direction);
 
     std::vector<Position> *traverse(char *stringPath);
-
-    Position relativePosition(int pos);
 
     std::unordered_set<Position> *getDiamonds();
 
@@ -365,10 +361,6 @@ bool Position::operator!=(const Position &rhs) const {
     return !(rhs == *this);
 }
 
-int Position::absoluteOn(Map *map) const {
-    return map->width * y + x;
-}
-
 bool Position::operator<(const Position &rhs) const {
     if (y < rhs.y) return true;
     if (y == rhs.y) return x < rhs.x;
@@ -449,13 +441,9 @@ std::unordered_set<Position> *Map::getDiamonds() {
     return diamonds;
 }
 
-Position Map::relativePosition(int pos) {
-    return {pos % width, pos / width};
-}
-
 std::vector<Position> *Map::traverse(char *stringPath) {
     auto path = new std::vector<Position>();
-    Position current = this->shipInitialPosition;
+    Position current = this->initialPosition;
     for (int i = 0; stringPath[i] != '\0'; ++i) {
         if (stringPath[i] < 48 || stringPath[i] > 57)
             throw "Wrong path";
@@ -501,8 +489,8 @@ MoveData Map::move(Position initial, Direction direction) {
 
 void Map::print() {
     printf("h: %d w: %d\n", height, width);
-    printf("m: %d t: %d\n", maxMoves, targetScore);
-    printf("s: (%d, %d)\n", shipInitialPosition.x, shipInitialPosition.y);
+    printf("m: %d t: %d\n", maxMoves, allDiamonds);
+    printf("s: (%d, %d)\n", initialPosition.x, initialPosition.y);
 
     printToOutputStream(std::cout);
 }
@@ -519,9 +507,9 @@ const char Map::at(int x, int y) {
     return map[y][x];
 }
 
-Map::Map(int height, int width, int maxMoves, char **map, Position shipPosition, int targetScore)
-        : height(height), width(width), maxMoves(maxMoves), map(map), shipInitialPosition(shipPosition),
-          targetScore(targetScore) {
+Map::Map(int height, int width, int maxMoves, char **map, Position shipPosition, int allDiamonds)
+        : height(height), width(width), maxMoves(maxMoves), map(map), initialPosition(shipPosition),
+          allDiamonds(allDiamonds) {
 }
 
 void Map::set(Position position, Entity e) {
@@ -548,7 +536,7 @@ Map::~Map() {
 //region GRAPH IMPLEMENTATION
 
 void Graph::traversal(int maxLeaps) {
-    auto result = traversalSub(map->shipInitialPosition, new std::vector<Edge *>(),
+    auto result = traversalSub(map->initialPosition, new std::vector<Edge *>(),
                                new std::unordered_set<Position>(),
                                diamonds.size(), maxLeaps);
     if (result->empty()) {
@@ -659,7 +647,7 @@ void Graph::printDotPath(std::vector<Edge *> *edges, std::ostream &stream) {
     for (Edge *e : *edges) {
         stream << "\t\"(" << e->to.x << "," << e->to.y << ")\" [color=lightskyblue]" << std::endl;
     }
-    stream << "\t\"(" << map->shipInitialPosition.x << "," << map->shipInitialPosition.y << ")\" [color=gold]"
+    stream << "\t\"(" << map->initialPosition.x << "," << map->initialPosition.y << ")\" [color=gold]"
            << std::endl;
     stream << "}" << std::endl;
 }
@@ -688,7 +676,7 @@ void Graph::printDot(std::ostream &stream) {
                    << ekv.second->to.y << ")\" [label=" << ekv.second->diamonds->size() << "];" << std::endl;
         }
     }
-    stream << "\t\"(" << map->shipInitialPosition.x << "," << map->shipInitialPosition.y << ")\" [color=gold]"
+    stream << "\t\"(" << map->initialPosition.x << "," << map->initialPosition.y << ")\" [color=gold]"
            << std::endl;
     stream << "}" << std::endl;
 }
@@ -727,8 +715,8 @@ Graph::Graph(Map *map) {
     diamonds.insert(dia->begin(), dia->end());
 
     std::queue<Position> positions;
-    positions.push(map->shipInitialPosition);
-    vertices.insert(std::pair<Position, Vertex *>(map->shipInitialPosition, new Vertex()));
+    positions.push(map->initialPosition);
+    vertices.insert(std::pair<Position, Vertex *>(map->initialPosition, new Vertex()));
     while (!positions.empty()) {
         Position currentPosition = positions.front();
         positions.pop();
